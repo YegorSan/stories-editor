@@ -32,6 +32,10 @@ const credentialsSchema = z.object({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Required on Vercel; without AUTH_SECRET Auth.js returns
+  // "There is a problem with the server configuration."
+  secret: process.env.AUTH_SECRET,
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",

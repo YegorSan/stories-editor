@@ -27,29 +27,49 @@ export async function POST(req: Request) {
   }
 
   const email = parsed.data.email.trim().toLowerCase();
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
+
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json(
+        { error: "Користувач із таким email уже є" },
+        { status: 409 },
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        name: parsed.data.name || null,
+      },
+      select: { id: true, email: true },
+    });
+
+    try {
+      await captureServerEvent({
+        distinctId: user.id,
+        event: "register",
+        properties: { email: user.email },
+      });
+    } catch {
+      // analytics must not block signup
+    }
+
+    return NextResponse.json({ ok: true, userId: user.id });
+  } catch (err) {
+    console.error("[register]", err);
+    const message = err instanceof Error ? err.message : "DB error";
+    const looksLikeMissingTable =
+      /does not exist|P2021|P1001|Can't reach database/i.test(message);
     return NextResponse.json(
-      { error: "Користувач із таким email уже є" },
-      { status: 409 },
+      {
+        error: looksLikeMissingTable
+          ? "База ще не готова: виконай prisma migrate deploy на Neon"
+          : "Не вдалося створити акаунт. Перевір DATABASE_URL / логи Vercel.",
+      },
+      { status: 500 },
     );
   }
-
-  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      name: parsed.data.name || null,
-    },
-    select: { id: true, email: true },
-  });
-
-  await captureServerEvent({
-    distinctId: user.id,
-    event: "register",
-    properties: { email: user.email },
-  });
-
-  return NextResponse.json({ ok: true, userId: user.id });
 }

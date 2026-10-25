@@ -34,9 +34,14 @@ export function AuthForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, name: name || undefined }),
         });
-        const data = (await res.json()) as { error?: string };
+        let data: { error?: string } = {};
+        try {
+          data = (await res.json()) as { error?: string };
+        } catch {
+          data = {};
+        }
         if (!res.ok) {
-          setError(data.error || "Не вдалося зареєструватися");
+          setError(data.error || `Не вдалося зареєструватися (${res.status})`);
           return;
         }
       }
