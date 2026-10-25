@@ -13,6 +13,10 @@ export type ElementBase = {
   scale: number;
   rotation: number;
   z: number;
+  /** Hidden layers are skipped on the stage previews and in the PNG export. */
+  hidden?: boolean;
+  /** Locked layers can be selected from the layers list but not dragged. */
+  locked?: boolean;
 };
 
 export type TextElement = ElementBase & {

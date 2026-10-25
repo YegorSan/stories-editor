@@ -15,8 +15,13 @@ import {
 export function useStoryEditor(initialDoc: StoryDoc) {
   const [doc, setDoc] = useState<StoryDoc>(initialDoc);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [past, setPast] = useState<StoryDoc[]>([]);
-  const [future, setFuture] = useState<StoryDoc[]>([]);
+  // History lives in refs: callers push and pop synchronously, and state
+  // updaters run late (and twice under StrictMode), which corrupted the stacks.
+  const history = useRef<{ past: StoryDoc[]; future: StoryDoc[] }>({
+    past: [],
+    future: [],
+  });
+  const [depth, setDepth] = useState({ past: 0, future: 0 });
   const docRef = useRef(doc);
   const snapshot = useRef(doc);
 
@@ -25,45 +30,60 @@ export function useStoryEditor(initialDoc: StoryDoc) {
     [doc.elements, selectedId],
   );
 
-  const commit = useCallback((next: StoryDoc) => {
-    setPast((stack) => [...stack.slice(-50), snapshot.current]);
-    setFuture([]);
-    snapshot.current = next;
-    docRef.current = next;
-    setDoc(next);
+  const syncDepth = useCallback(() => {
+    const { past, future } = history.current;
+    setDepth({ past: past.length, future: future.length });
   }, []);
+
+  const pushPast = useCallback(
+    (next: StoryDoc) => {
+      const h = history.current;
+      h.past = [...h.past.slice(-50), snapshot.current];
+      h.future = [];
+      snapshot.current = next;
+      syncDepth();
+    },
+    [syncDepth],
+  );
+
+  const commit = useCallback(
+    (next: StoryDoc) => {
+      pushPast(next);
+      docRef.current = next;
+      setDoc(next);
+    },
+    [pushPast],
+  );
 
   const finishGesture = useCallback(() => {
     const current = docRef.current;
     if (snapshot.current === current) return;
-    setPast((stack) => [...stack.slice(-50), snapshot.current]);
-    setFuture([]);
-    snapshot.current = current;
-  }, []);
+    pushPast(current);
+  }, [pushPast]);
 
   const undo = useCallback(() => {
-    setPast((stack) => {
-      if (stack.length === 0) return stack;
-      const prev = stack[stack.length - 1];
-      setFuture((next) => [snapshot.current, ...next]);
-      snapshot.current = prev;
-      docRef.current = prev;
-      setDoc(prev);
-      return stack.slice(0, -1);
-    });
-  }, []);
+    const h = history.current;
+    const prev = h.past[h.past.length - 1];
+    if (!prev) return;
+    h.past = h.past.slice(0, -1);
+    h.future = [snapshot.current, ...h.future];
+    snapshot.current = prev;
+    docRef.current = prev;
+    setDoc(prev);
+    syncDepth();
+  }, [syncDepth]);
 
   const redo = useCallback(() => {
-    setFuture((stack) => {
-      if (stack.length === 0) return stack;
-      const [next, ...rest] = stack;
-      setPast((pastStack) => [...pastStack, snapshot.current]);
-      snapshot.current = next;
-      docRef.current = next;
-      setDoc(next);
-      return rest;
-    });
-  }, []);
+    const h = history.current;
+    const [next, ...rest] = h.future;
+    if (!next) return;
+    h.future = rest;
+    h.past = [...h.past, snapshot.current];
+    snapshot.current = next;
+    docRef.current = next;
+    setDoc(next);
+    syncDepth();
+  }, [syncDepth]);
 
   const applyTemplate = useCallback(
     (id: string) => {
@@ -259,8 +279,8 @@ export function useStoryEditor(initialDoc: StoryDoc) {
     moveLayer,
     undo,
     redo,
-    canUndo: past.length > 0,
-    canRedo: future.length > 0,
+    canUndo: depth.past > 0,
+    canRedo: depth.future > 0,
   };
 }
 

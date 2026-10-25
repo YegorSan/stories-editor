@@ -8,10 +8,14 @@ import {
   IconDelete,
   IconDown,
   IconDuplicate,
+  IconEye,
+  IconEyeOff,
   IconLayers,
+  IconLock,
   IconPhoto,
   IconStickers,
   IconText,
+  IconUnlock,
   IconUp,
 } from "@/components/ui/icons";
 import { STICKER_PACKS } from "@/lib/stickers";
@@ -31,8 +35,12 @@ export type InspectorProps = {
   onDuplicate: () => void;
   onDelete: () => void;
   onLayer: (direction: "up" | "down") => void;
+  onToggleLayer: (id: string, flag: LayerFlag) => void;
+  hideHeader?: boolean;
   className?: string;
 };
+
+export type LayerFlag = "hidden" | "locked";
 
 export function Inspector({
   doc,
@@ -46,17 +54,21 @@ export function Inspector({
   onDuplicate,
   onDelete,
   onLayer,
+  onToggleLayer,
+  hideHeader = false,
   className = "",
 }: InspectorProps) {
   return (
     <aside
       className={`flex h-full min-h-0 w-full flex-col border-l border-rule bg-bench ${className}`}
     >
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-rule px-4">
-        <IconLayers className="h-4 w-4 text-ash" />
-        <Label tone="bone">Шари</Label>
-        <span className="data-mono ml-auto text-ash">{doc.elements.length}</span>
-      </div>
+      {hideHeader ? null : (
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-rule px-4">
+          <IconLayers className="h-4 w-4 text-ash" />
+          <Label tone="bone">Шари</Label>
+          <span className="data-mono ml-auto text-ash">{doc.elements.length}</span>
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <LayersStack
@@ -65,6 +77,7 @@ export function Inspector({
           hoveredId={hoveredId}
           onHover={onHover}
           onSelect={onSelect}
+          onToggle={onToggleLayer}
         />
 
         {selected ? (
@@ -108,12 +121,14 @@ function LayersStack({
   hoveredId,
   onHover,
   onSelect,
+  onToggle,
 }: {
   elements: StoryElement[];
   selectedId: string | null;
   hoveredId: string | null;
   onHover: (id: string | null) => void;
   onSelect: (id: string | null) => void;
+  onToggle: (id: string, flag: LayerFlag) => void;
 }) {
   const ordered = [...elements].sort((a, b) => b.z - a.z);
 
@@ -129,31 +144,76 @@ function LayersStack({
         const active = el.id === selectedId;
         const hovered = el.id === hoveredId;
         return (
-          <li key={el.id}>
+          <li
+            key={el.id}
+            className={`relative flex items-stretch border-b border-rule transition-colors last:border-b-0 ${
+              active
+                ? "bg-signal-tint text-bone"
+                : hovered
+                  ? "bg-slab text-bone"
+                  : "text-ash hover:bg-slab hover:text-bone"
+            }`}
+            onPointerEnter={() => onHover(el.id)}
+            onPointerLeave={() => onHover(null)}
+          >
+            {active ? (
+              <span className="absolute inset-y-0 left-0 w-0.5 bg-signal" aria-hidden />
+            ) : null}
             <button
               type="button"
               onClick={() => onSelect(el.id)}
-              onPointerEnter={() => onHover(el.id)}
-              onPointerLeave={() => onHover(null)}
-              className={`relative flex w-full items-center gap-2 border-b border-rule px-3 py-2.5 text-left transition-colors last:border-b-0 ${
-                active
-                  ? "bg-signal-tint text-bone"
-                  : hovered
-                    ? "bg-slab text-bone"
-                    : "text-ash hover:bg-slab hover:text-bone"
+              className={`flex min-w-0 flex-1 items-center gap-2 py-2.5 pl-3 text-left [@media(pointer:coarse)]:min-h-12 ${
+                el.hidden ? "opacity-45" : ""
               }`}
             >
-              {active ? (
-                <span className="absolute inset-y-0 left-0 w-0.5 bg-signal" aria-hidden />
-              ) : null}
               <LayerIcon type={el.type} />
               <span className="min-w-0 flex-1 truncate text-sm">{layerLabel(el)}</span>
-              <span className="data-mono shrink-0 text-ash">{el.z}</span>
             </button>
+            <LayerToggle
+              on={!!el.locked}
+              label={el.locked ? "Розблокувати" : "Заблокувати"}
+              onClick={() => onToggle(el.id, "locked")}
+            >
+              {el.locked ? <IconLock className="h-4 w-4" /> : <IconUnlock className="h-4 w-4" />}
+            </LayerToggle>
+            <LayerToggle
+              on={!!el.hidden}
+              label={el.hidden ? "Показати" : "Сховати"}
+              onClick={() => onToggle(el.id, "hidden")}
+            >
+              {el.hidden ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
+            </LayerToggle>
           </li>
         );
       })}
     </ul>
+  );
+}
+
+function LayerToggle({
+  on,
+  label,
+  onClick,
+  children,
+}: {
+  on: boolean;
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={on}
+      title={label}
+      onClick={onClick}
+      className={`flex w-9 shrink-0 items-center justify-center transition-colors [@media(pointer:coarse)]:w-11 ${
+        on ? "text-signal" : "text-ash/50 hover:text-bone"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -191,7 +251,7 @@ function TransformControls({
         label="Масштаб"
         value={selected.scale}
         min={0.2}
-        max={3}
+        max={4}
         step={0.01}
         decimals={2}
         suffix="×"

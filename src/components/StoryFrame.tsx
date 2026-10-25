@@ -61,7 +61,8 @@ export function StoryFrame({
         ...backgroundStyle(doc.background),
       }}
     >
-      {[...doc.elements]
+      {doc.elements
+        .filter((el) => !el.hidden)
         .sort((a, b) => a.z - b.z)
         .map((el) => (
           <div key={el.id} style={elementPlacementStyle(el)}>

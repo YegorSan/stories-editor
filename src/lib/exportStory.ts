@@ -52,7 +52,7 @@ function paintBackground(ctx: CanvasRenderingContext2D, doc: StoryDoc): void {
 }
 
 function sorted(elements: StoryElement[]): StoryElement[] {
-  return [...elements].sort((a, b) => a.z - b.z);
+  return elements.filter((el) => !el.hidden).sort((a, b) => a.z - b.z);
 }
 
 function fontShorthand(el: TextElement): string {
@@ -218,7 +218,8 @@ export async function exportStoryPng(doc: StoryDoc): Promise<Blob> {
 }
 
 export function countEmptyPhotoSlots(doc: StoryDoc): number {
-  return doc.elements.filter((el) => el.type === "photo" && !el.src).length;
+  return doc.elements.filter((el) => el.type === "photo" && !el.src && !el.hidden)
+    .length;
 }
 
 export function fileToDataUrl(file: File): Promise<string> {

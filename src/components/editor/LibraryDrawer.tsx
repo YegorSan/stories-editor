@@ -33,6 +33,7 @@ export type LibraryDrawerProps = {
   selected: StoryElement | null;
   onChangeSelected: ChangeHandler;
   onCommitSelected: () => void;
+  hideHeader?: boolean;
   className?: string;
 };
 
@@ -53,10 +54,15 @@ export function LibraryDrawer(props: LibraryDrawerProps) {
     <aside
       className={`flex h-full min-h-0 w-full flex-col border-r border-rule bg-bench ${props.className ?? ""}`}
     >
-      <div className="flex h-10 shrink-0 items-center border-b border-rule px-4">
-        <Label tone="bone">{tabTitle(props.tab)}</Label>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 pane-rise" key={props.tab}>
+      {props.hideHeader ? null : (
+        <div className="flex h-10 shrink-0 items-center border-b border-rule px-4">
+          <Label tone="bone">{tabTitle(props.tab)}</Label>
+        </div>
+      )}
+      <div
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pane-rise"
+        key={props.tab}
+      >
         {props.tab === "templates" ? (
           <TemplatesPane onApply={props.onApplyTemplate} />
         ) : null}
@@ -82,7 +88,7 @@ export function LibraryDrawer(props: LibraryDrawerProps) {
   );
 }
 
-function tabTitle(tab: EditorTab): string {
+export function tabTitle(tab: EditorTab): string {
   switch (tab) {
     case "templates":
       return "Шаблони";
@@ -94,6 +100,8 @@ function tabTitle(tab: EditorTab): string {
       return "Фон";
     case "media":
       return "Медіа";
+    case "layers":
+      return "Шари";
   }
 }
 
@@ -399,7 +407,8 @@ function MediaPane({
         </button>
       </CropMarksHost>
       <p className="micro-mono text-ash">
-        Подвійний клік по рамці «+ фото» на кадрі підставляє знімок у цей слот.
+        Подвійний клік по рамці «+ фото» на кадрі (на телефоні — виділи її й
+        натисни «Фото» внизу) підставляє знімок у цей слот.
       </p>
     </div>
   );

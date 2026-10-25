@@ -35,6 +35,87 @@ body {
   color: var(--color-bone);
 }
 
+/* viewport-fit=cover: keep content clear of landscape notches */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Editor shell: app-like touch behaviour, no page bounce or double-tap zoom */
+.editor-shell {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+.editor-shell button,
+.editor-shell [role="button"],
+.editor-shell a {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.editor-shell .stage-surface {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (pointer: coarse) {
+  /* iOS zooms the page when focusing inputs below 16px */
+  .editor-shell input:not([type="range"]):not([type="color"]):not([type="file"]),
+  .editor-shell textarea {
+    font-size: 16px;
+  }
+
+  .editor-shell button:active:not(:disabled) {
+    opacity: 0.72;
+  }
+}
+
+/* Bottom sheet */
+.sheet-panel {
+  transition: height var(--duration-drawer) var(--ease-snap);
+  will-change: height;
+}
+
+.sheet-panel[data-dragging="true"] {
+  transition: none;
+}
+
+.sheet-handle {
+  touch-action: none;
+  cursor: grab;
+}
+
+.sheet-handle:active {
+  cursor: grabbing;
+}
+
+/* Snap guides on the stage */
+.snap-guide-x,
+.snap-guide-y {
+  position: absolute;
+  pointer-events: none;
+  z-index: 45;
+  background: var(--color-guide);
+}
+
+.snap-guide-x {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  left: 50%;
+}
+
+.snap-guide-y {
+  left: 0;
+  right: 0;
+  height: 1px;
+  top: 50%;
+}
+
 .sticker-mark svg,
 .sticker-mark img {
   display: block;
@@ -267,6 +348,7 @@ input[type="range"] {
 @media (prefers-reduced-motion: reduce) {
   .stamp-in,
   .pane-rise,
+  .sheet-panel,
   .shutter-flash,
   .save-dot--saving,
   .crop-marks-host > .crop-mark {

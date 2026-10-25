@@ -2,6 +2,7 @@
 
 import {
   IconBackground,
+  IconLayers,
   IconMedia,
   IconStickers,
   IconTemplates,
@@ -15,6 +16,7 @@ const TOOLS: { id: EditorTab; label: string; Icon: typeof IconTemplates }[] = [
   { id: "text", label: "Текст", Icon: IconText },
   { id: "bg", label: "Фон", Icon: IconBackground },
   { id: "media", label: "Медіа", Icon: IconMedia },
+  { id: "layers", label: "Шари", Icon: IconLayers },
 ];
 
 export function ToolRail({
@@ -27,6 +29,8 @@ export function ToolRail({
   orientation?: "vertical" | "horizontal";
 }) {
   const vertical = orientation === "vertical";
+  // Desktop docks the layers inspector on the right; only phones need a tab for it.
+  const tools = vertical ? TOOLS.filter((tool) => tool.id !== "layers") : TOOLS;
 
   return (
     <nav
@@ -34,18 +38,19 @@ export function ToolRail({
       className={
         vertical
           ? "flex h-full w-16 shrink-0 flex-col border-r border-rule bg-bench"
-          : "flex h-14 w-full shrink-0 items-stretch border-t border-rule bg-bench"
+          : "flex w-full shrink-0 items-stretch border-t border-rule bg-bench pb-[env(safe-area-inset-bottom)]"
       }
     >
-      {TOOLS.map(({ id, label, Icon }) => {
+      {tools.map(({ id, label, Icon }) => {
         const active = tab === id;
         return (
           <button
             key={id}
             type="button"
             onClick={() => onTab(id)}
+            aria-pressed={active}
             className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition-[color,background] duration-[90ms] ease-[var(--ease-snap)] ${
-              vertical ? "px-1 py-3" : "px-1 py-1.5"
+              vertical ? "px-1 py-3" : "h-14 px-1 py-1.5"
             } ${active ? "bg-slab text-bone" : "text-ash hover:text-bone"}`}
           >
             {active ? (

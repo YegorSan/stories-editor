@@ -27,7 +27,7 @@ export function TopBar({
   onExport: () => void;
 }) {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-rule bg-bench px-3 md:px-4">
+    <header className="flex h-[calc(3rem+env(safe-area-inset-top))] shrink-0 items-center justify-between gap-3 border-b border-rule bg-bench px-3 pt-[env(safe-area-inset-top)] md:px-4">
       <div className="flex min-w-0 items-center gap-2 md:gap-3">
         <Link
           href="/"
@@ -79,7 +79,7 @@ export function TopBar({
           disabled={!canUndo}
           onClick={onUndo}
           title="Undo ⌘Z"
-          className="!min-h-9 !px-2"
+          className="!min-h-9 !px-2 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
           aria-label="Undo"
         >
           <IconUndo />
@@ -89,7 +89,7 @@ export function TopBar({
           disabled={!canRedo}
           onClick={onRedo}
           title="Redo ⌘⇧Z"
-          className="!min-h-9 !px-2"
+          className="!min-h-9 !px-2 [@media(pointer:coarse)]:!min-h-11 [@media(pointer:coarse)]:!min-w-11"
           aria-label="Redo"
         >
           <IconRedo />

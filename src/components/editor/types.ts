@@ -1,4 +1,4 @@
-export type EditorTab = "templates" | "stickers" | "text" | "bg" | "media";
+export type EditorTab = "templates" | "stickers" | "text" | "bg" | "media" | "layers";
 
 export type SheetDetent = "peek" | "half" | "full";
 

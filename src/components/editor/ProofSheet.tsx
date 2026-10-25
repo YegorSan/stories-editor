@@ -38,7 +38,7 @@ export function ProofSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-table/70 p-4"
+      className="editor-shell fixed inset-0 z-50 grid items-end bg-table/70 sm:place-items-center sm:p-4"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -47,7 +47,7 @@ export function ProofSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Пруф-лист експорту"
-        className="relative w-full max-w-md rounded-[4px] border border-rule-strong bg-proof p-6 text-proof-ink shadow-[0_16px_40px_-12px_#000000A6] pane-rise"
+        className="relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-t-[12px] border-t border-rule-strong bg-proof p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-proof-ink shadow-[0_16px_40px_-12px_#000000A6] pane-rise sm:max-w-md sm:rounded-[4px] sm:border sm:pb-6"
         style={{ animationDuration: "var(--duration-proof)" }}
       >
         <div className="flex items-start justify-between gap-4">
@@ -62,14 +62,14 @@ export function ProofSheet({
             type="button"
             onClick={onClose}
             aria-label="Закрити"
-            className="text-proof-ink/50 hover:text-proof-ink"
+            className="-m-2 flex h-11 w-11 items-center justify-center text-proof-ink/50 hover:text-proof-ink"
           >
             <IconClose />
           </button>
         </div>
 
         <div className="mt-5 flex justify-center">
-          <CropMarksHost always className="w-[160px]">
+          <CropMarksHost always className="w-[min(160px,28dvh)]">
             <StoryPreview doc={doc} className="rounded-[4px]" />
           </CropMarksHost>
         </div>
@@ -97,7 +97,7 @@ export function ProofSheet({
               variant="signal"
               disabled={busy}
               onClick={onShare}
-              className="w-full !text-proof"
+              className="min-h-12 w-full !text-proof sm:min-h-0"
             >
               <IconShare className="h-4 w-4" />
               {busy ? "Готуємо…" : "Поділитись"}
@@ -107,7 +107,7 @@ export function ProofSheet({
             variant={canShare ? "quiet" : "signal"}
             disabled={busy}
             onClick={onDownload}
-            className={`w-full ${canShare ? "!border-proof-ink/20 !bg-proof-ink/5 !text-proof-ink" : "!text-proof"}`}
+            className={`min-h-12 w-full sm:min-h-0 ${canShare ? "!border-proof-ink/20 !bg-proof-ink/5 !text-proof-ink" : "!text-proof"}`}
           >
             <IconDownload className="h-4 w-4" />
             {busy ? "Готуємо…" : "Завантажити PNG"}

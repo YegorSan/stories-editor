@@ -67,14 +67,14 @@ export function ScrubField({
     onCommit?.();
   };
 
-  const pct = ((value - min) / (max - min)) * 100;
+  const pct = clamp(((value - min) / (max - min)) * 100, 0, 100);
 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
-          className="label-condensed cursor-ew-resize select-none text-ash hover:text-bone"
+          className="label-condensed cursor-ew-resize touch-none select-none text-ash hover:text-bone"
           onPointerDown={onPointerDownLabel}
           onPointerMove={onPointerMoveLabel}
           onPointerUp={endScrub}
@@ -107,12 +107,13 @@ export function ScrubField({
                 apply(value - (event.shiftKey ? step * 10 : step), true);
               }
             }}
-            className="data-mono w-14 rounded-[2px] border border-rule bg-table px-1.5 py-1 text-right text-bone outline-none focus:border-bone focus:ring-2 focus:ring-signal/40"
+            inputMode="decimal"
+            className="data-mono w-14 rounded-[2px] [@media(pointer:coarse)]:w-[4.5rem] border border-rule bg-table px-1.5 py-1 text-right text-bone outline-none focus:border-bone focus:ring-2 focus:ring-signal/40"
           />
           {suffix ? <span className="micro-mono text-ash">{suffix}</span> : null}
         </div>
       </div>
-      <div className="relative h-5">
+      <div className="relative h-5 [@media(pointer:coarse)]:h-8">
         <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-rule" />
         <div
           className="absolute inset-y-0 left-0 flex w-full items-center justify-between px-0"
@@ -138,7 +139,7 @@ export function ScrubField({
           className="absolute inset-0 w-full cursor-ew-resize appearance-none bg-transparent opacity-0"
         />
         <span
-          className="pointer-events-none absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[1px] bg-signal"
+          className="pointer-events-none absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[1px] bg-signal [@media(pointer:coarse)]:h-4 [@media(pointer:coarse)]:w-4"
           style={{ left: `${pct}%` }}
           aria-hidden
         />

@@ -10,17 +10,12 @@ import {
 import { getDraft, saveDraft } from "@/lib/drafts";
 import { uid } from "@/lib/ids";
 import { createStory } from "@/lib/templates";
-import type { StoryDoc } from "@/lib/types";
-import { Button } from "@/components/ui/Button";
-import {
-  IconDelete,
-  IconDown,
-  IconDuplicate,
-  IconUp,
-} from "@/components/ui/icons";
-import { ScrubField } from "@/components/ui/ScrubField";
-import { Inspector } from "./Inspector";
-import { LibraryDrawer } from "./LibraryDrawer";
+import type { StoryDoc, StoryElement } from "@/lib/types";
+import { IconSafeZone } from "@/components/ui/icons";
+import { BottomSheet } from "./BottomSheet";
+import { Inspector, type LayerFlag } from "./Inspector";
+import { LibraryDrawer, tabTitle } from "./LibraryDrawer";
+import { MobileActionBar, MobileAdjust } from "./MobileSelection";
 import { ProofSheet } from "./ProofSheet";
 import { StatusBar } from "./StatusBar";
 import { StoryStage } from "./StoryStage";
@@ -28,6 +23,11 @@ import { ToolRail } from "./ToolRail";
 import { TopBar } from "./TopBar";
 import type { EditorTab, SheetDetent } from "./types";
 import { useStoryEditor } from "./useStoryEditor";
+
+/** Collapsed sheet height on phones; fits the adjust panel when a layer is selected. */
+const SHEET_PEEK = 132;
+
+type Toast = { text: string; action?: { label: string; run: () => void } };
 
 const NUDGE_KEYS: Record<string, { x: number; y: number } | undefined> = {
   ArrowLeft: { x: -1, y: 0 },
@@ -124,7 +124,7 @@ function EditorWorkspace({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [readout, setReadout] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const [frameIndex] = useState(() => {
     // Stable per-session frame number from draft id hash.
     let hash = 0;
@@ -176,7 +176,7 @@ function EditorWorkspace({
 
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 2200);
+    const t = window.setTimeout(() => setToast(null), toast.action ? 4000 : 2200);
     return () => window.clearTimeout(t);
   }, [toast]);
 
@@ -278,30 +278,57 @@ function EditorWorkspace({
   const onTab = (next: EditorTab) => {
     setTab(next);
     setDrawerOpen(true);
-    setSheetDetent((d) => (d === "peek" ? "half" : d));
+    // Tapping the active tab again folds the phone sheet away.
+    setSheetDetent((d) => (d === "peek" ? "half" : next === tab ? "peek" : d));
   };
 
-  const closeDrawerAfterAdd = () => {
+  const closeDrawerAfterAdd = (collapseSheet = true) => {
+    if (collapseSheet) setSheetDetent("peek");
     // On medium screens the drawer overlays the stage — close after add.
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
       setDrawerOpen(false);
     }
   };
 
-  const library = (
+  const toggleLayer = (id: string, flag: LayerFlag) => {
+    const el = doc.elements.find((item) => item.id === id);
+    if (!el) return;
+    const next = !el[flag];
+    commitElement(id, { [flag]: next });
+    if (flag === "hidden" && next && id === selectedId) setSelectedId(null);
+  };
+
+  const deleteWithUndo = () => {
+    removeSelected();
+    setToast({ text: "Шар видалено", action: { label: "Повернути", run: undo } });
+  };
+
+  const pickPhotoFor = (id: string) => {
+    photoTarget.current = id;
+    photoInput.current?.click();
+  };
+
+  const changeSelected = (patch: Partial<StoryElement>) => {
+    if (!selectedId) return;
+    patchElement(selectedId, patch);
+  };
+
+  const renderLibrary = (hideHeader = false) => (
     <LibraryDrawer
-      tab={tab}
+      tab={tab === "layers" ? "stickers" : tab}
+      hideHeader={hideHeader}
       onAddSticker={(id) => {
         addSticker(id);
         closeDrawerAfterAdd();
       }}
       onAddText={() => {
         addText();
-        closeDrawerAfterAdd();
+        // Phones keep the sheet open on the text tab so the new layer can be typed into.
+        closeDrawerAfterAdd(false);
       }}
       onApplyTemplate={(id) => {
         applyTemplate(id);
-        setToast("Шаблон застосовано · ⌘Z");
+        setToast({ text: "Шаблон застосовано", action: { label: "Повернути", run: undo } });
         closeDrawerAfterAdd();
       }}
       onBackground={setBackground}
@@ -311,15 +338,12 @@ function EditorWorkspace({
         closeDrawerAfterAdd();
       }}
       selected={selected}
-      onChangeSelected={(patch) => {
-        if (!selectedId) return;
-        patchElement(selectedId, patch);
-      }}
+      onChangeSelected={changeSelected}
       onCommitSelected={finishGesture}
     />
   );
 
-  const inspector = (
+  const renderInspector = (hideHeader = false) => (
     <Inspector
       doc={doc}
       selected={selected}
@@ -327,14 +351,14 @@ function EditorWorkspace({
       hoveredId={hoveredId}
       onHover={setHoveredId}
       onSelect={setSelectedId}
-      onChangeSelected={(patch) => {
-        if (!selectedId) return;
-        patchElement(selectedId, patch);
-      }}
+      onChangeSelected={changeSelected}
       onCommitSelected={finishGesture}
       onDuplicate={duplicateSelected}
       onDelete={removeSelected}
       onLayer={moveLayer}
+      onToggleLayer={toggleLayer}
+      hideHeader={hideHeader}
+      className={hideHeader ? "!border-l-0" : ""}
     />
   );
 
@@ -348,19 +372,17 @@ function EditorWorkspace({
       onSelect={setSelectedId}
       onChangeElement={patchElement}
       onCommit={finishGesture}
-      onPhotoPick={(id) => {
-        photoTarget.current = id;
-        photoInput.current?.click();
-      }}
+      onPhotoPick={pickPhotoFor}
       onReadout={setReadout}
+      onInteract={() => setSheetDetent("peek")}
     />
   );
 
-  const sheetHeight =
-    sheetDetent === "full" ? "85dvh" : sheetDetent === "half" ? "50dvh" : "7rem";
+  const library = renderLibrary();
+  const inspector = renderInspector();
 
   return (
-    <div className="flex h-dvh flex-col bg-table text-bone">
+    <div className="editor-shell relative flex h-dvh flex-col bg-table text-bone">
       <TopBar
         title={title}
         frameIndex={frameIndex}
@@ -412,70 +434,73 @@ function EditorWorkspace({
 
       {/* Mobile workspace (<768) */}
       <div className="relative flex min-h-0 flex-1 flex-col md:hidden">
-        <div className="min-h-0 flex-1 bg-table pb-[env(safe-area-inset-bottom)]">
-          {stage}
-        </div>
-
-        {selected ? (
-          <div className="flex shrink-0 items-center gap-1 border-t border-rule bg-bench px-2 py-2">
-            <div className="min-w-0 flex-1 px-1">
-              <ScrubField
-                label="Масштаб"
-                value={selected.scale}
-                min={0.2}
-                max={3}
-                step={0.01}
-                decimals={2}
-                onChange={(scale) => {
-                  if (!selectedId) return;
-                  patchElement(selectedId, { scale });
-                }}
-                onCommit={finishGesture}
-              />
-            </div>
-            <Button variant="ghost" className="!min-h-11 !px-2" onClick={() => moveLayer("up")}>
-              <IconUp />
-            </Button>
-            <Button variant="ghost" className="!min-h-11 !px-2" onClick={() => moveLayer("down")}>
-              <IconDown />
-            </Button>
-            <Button variant="ghost" className="!min-h-11 !px-2" onClick={duplicateSelected}>
-              <IconDuplicate />
-            </Button>
-            <Button variant="ghost" className="!min-h-11 !px-2 !text-danger" onClick={removeSelected}>
-              <IconDelete />
-            </Button>
+        <div className="relative min-h-0 flex-1">
+          <div className="absolute inset-0 bg-table" style={{ paddingBottom: SHEET_PEEK }}>
+            {stage}
           </div>
-        ) : null}
-
-        <div
-          className="relative z-20 flex shrink-0 flex-col border-t border-rule bg-bench transition-[height] duration-[220ms] ease-[var(--ease-snap)]"
-          style={{ height: sheetHeight }}
-        >
           <button
             type="button"
-            aria-label="Висота панелі"
-            className="flex h-5 w-full items-center justify-center"
-            onClick={() =>
-              setSheetDetent((d) =>
-                d === "peek" ? "half" : d === "half" ? "full" : "peek",
+            aria-label="Safe zones"
+            aria-pressed={safeZones}
+            onClick={() => setSafeZones((v) => !v)}
+            className={`absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border bg-bench/90 ${
+              safeZones ? "border-guide text-guide" : "border-rule text-ash"
+            }`}
+          >
+            <IconSafeZone className="h-4 w-4" />
+          </button>
+          <BottomSheet
+            detent={sheetDetent}
+            onDetent={setSheetDetent}
+            peekHeight={SHEET_PEEK}
+            label={`Панель: ${tabTitle(tab)}`}
+            header={
+              selected ? null : (
+                <div className="flex items-baseline justify-between px-4 pb-2">
+                  <span className="label-condensed text-bone">{tabTitle(tab)}</span>
+                  <span className="micro-mono text-ash">
+                    {sheetDetent === "peek" ? "тягни вгору" : "тягни вниз"}
+                  </span>
+                </div>
               )
             }
+            toolbar={
+              selected ? (
+                <MobileAdjust
+                  key={selected.id}
+                  selected={selected}
+                  onChange={changeSelected}
+                  onCommit={finishGesture}
+                />
+              ) : null
+            }
           >
-            <span className="h-1 w-10 rounded-full bg-rule-strong" />
-          </button>
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {sheetDetent === "peek" ? (
-              <div className="px-3 pb-2">
-                <p className="label-condensed text-ash">{tabLabel(tab)}</p>
-                <p className="mt-1 text-sm text-ash">Потягни вгору для бібліотеки</p>
-              </div>
-            ) : (
-              <div className="h-full">{library}</div>
-            )}
-          </div>
+            {tab === "layers" ? renderInspector(true) : renderLibrary(true)}
+          </BottomSheet>
         </div>
-        <ToolRail tab={tab} onTab={onTab} orientation="horizontal" />
+        {selected ? (
+          <MobileActionBar
+            selected={selected}
+            onDone={() => setSelectedId(null)}
+            onEdit={() => {
+              if (selected.type === "photo") {
+                pickPhotoFor(selected.id);
+                return;
+              }
+              setTab("text");
+              setSheetDetent("half");
+            }}
+            onLayer={moveLayer}
+            onDuplicate={duplicateSelected}
+            onDelete={deleteWithUndo}
+            onLayers={() => {
+              setTab("layers");
+              setSheetDetent("half");
+            }}
+          />
+        ) : (
+          <ToolRail tab={tab} onTab={onTab} orientation="horizontal" />
+        )}
       </div>
 
       <StatusBar
@@ -487,8 +512,25 @@ function EditorWorkspace({
       />
 
       {toast ? (
-        <div className="pointer-events-none absolute bottom-12 left-1/2 z-40 -translate-x-1/2 border border-rule-strong bg-bench px-3 py-2 data-mono text-bone shadow-[0_16px_40px_-12px_#000000A6]">
-          {toast}
+        <div
+          role="status"
+          className={`absolute left-1/2 top-[calc(3.75rem+env(safe-area-inset-top))] z-40 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap border border-rule-strong bg-bench px-3 py-2 data-mono text-bone shadow-[0_16px_40px_-12px_#000000A6] pane-rise md:bottom-12 md:top-auto ${
+            toast.action ? "" : "pointer-events-none"
+          }`}
+        >
+          {toast.text}
+          {toast.action ? (
+            <button
+              type="button"
+              className="label-condensed -my-2 -mr-3 min-h-10 px-3 text-signal"
+              onClick={() => {
+                toast.action?.run();
+                setToast(null);
+              }}
+            >
+              {toast.action.label}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -521,21 +563,6 @@ function EditorWorkspace({
       />
     </div>
   );
-}
-
-function tabLabel(tab: EditorTab): string {
-  switch (tab) {
-    case "templates":
-      return "Шаблони";
-    case "stickers":
-      return "Стікери";
-    case "text":
-      return "Текст";
-    case "bg":
-      return "Фон";
-    case "media":
-      return "Медіа";
-  }
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
