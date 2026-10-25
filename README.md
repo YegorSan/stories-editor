@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kadr — редактор Instagram Stories
 
-## Getting Started
+Тестовий застосунок у дусі Loomy: збираєш сторіс 9:16 з власних стікер-паків
+і шаблонів, експортуєш PNG 1080×1920 або відправляєш у потрібний Instagram-акаунт.
 
-First, run the development server:
+Стек: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4.
+
+## Запуск
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Далі [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Інші команди:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build   # продакшн-збірка
+npm run start   # запуск зібраного застосунку
+npm run lint    # ESLint
+npx tsc --noEmit  # перевірка типів
+```
 
-## Learn More
+## Що всередині
 
-To learn more about Next.js, take a look at the following resources:
+| Сторінка | Що робить |
+| --- | --- |
+| `/` | Вітрина шаблонів і стікер-паків |
+| `/stickers` | Усі 5 паків повністю |
+| `/editor` | Редактор кадру, приймає `?template=<id>` |
+| `/accounts` | Як викласти сторіс (без токенів) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Редактор: перетягування, масштаб і поворот елементів, текст із 8 шрифтами,
+фото на весь кадр або в слот, порядок шарів, undo/redo, стрілки для точного зсуву.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Структура
 
-## Deploy on Vercel
+```
+src/
+├── app/                      # роути App Router
+│   └── api/instagram/publish # серверна публікація сторіс
+├── components/
+│   ├── editor/               # редактор: сцена, док, діалог публікації, стан
+│   ├── StoryFrame.tsx        # рендер кадру 1080×1920 і прев'ю
+│   └── StickerMark.tsx       # інлайн-SVG стікера
+└── lib/                      # типи, шрифти, стікери, шаблони, експорт PNG
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Кадр завжди рендериться в координатах 1080×1920, а на екран масштабується через
+CSS container queries. Той самий документ малюється на `<canvas>` в `lib/exportStory.ts`,
+тож PNG збігається з тим, що видно на сцені.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Публікація в Instagram
+
+Токен Meta у браузер не вводиться і API його з клієнта не приймає.
+
+1. Телефон: у редакторі «В Instagram» → «Поділитись» → Instagram.
+2. Компʼютер: завантаж PNG 1080×1920 і виклади з телефону.
+
+Прямий постинг через Graph API зʼявиться після OAuth на сервері.

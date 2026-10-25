@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# exported story files from Graph API publish
+/public/exports/*.png
+
 # vercel
 .vercel
 
