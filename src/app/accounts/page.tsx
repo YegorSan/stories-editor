@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Label } from "@/components/ui/Label";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export default function AccountsPage() {
@@ -55,6 +56,7 @@ export default function AccountsPage() {
           </Link>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kadr
+      POSTGRES_PASSWORD: kadr
+      POSTGRES_DB: kadr
+    ports:
+      - "5432:5432"
+    volumes:
+      - kadr_pg:/var/lib/postgresql/data
+
+volumes:
+  kadr_pg:

@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CropMarksHost } from "@/components/ui/CropMarks";
 import { FrameNo } from "@/components/ui/FrameNo";
@@ -15,6 +16,9 @@ import {
 } from "@/components/ui/icons";
 import { StickerMark } from "@/components/StickerMark";
 import { StoryPreview } from "@/components/StoryFrame";
+import { useProAccess } from "@/hooks/useProAccess";
+import { track } from "@/lib/analytics";
+import { packRequiresPro } from "@/lib/commerce";
 import { FONT_CATEGORIES, STORY_FONTS, type FontCategory } from "@/lib/fonts";
 import { STICKER_PACKS } from "@/lib/stickers";
 import { TEMPLATES } from "@/lib/templates";
@@ -136,12 +140,23 @@ function TemplatesPane({ onApply }: { onApply: (id: string) => void }) {
 function StickersPane({ onAdd }: { onAdd: (id: string) => void }) {
   const [packId, setPackId] = useState(STICKER_PACKS[0].id);
   const pack = STICKER_PACKS.find((item) => item.id === packId) ?? STICKER_PACKS[0];
+  const { pro, authenticated, loading } = useProAccess();
+  const locked = packRequiresPro(pack.id) && !pro;
+  const trackedPack = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (locked && trackedPack.current !== pack.id) {
+      trackedPack.current = pack.id;
+      track("paywall_shown", { packId: pack.id, source: "editor" });
+    }
+  }, [locked, pack.id]);
 
   return (
     <div className="space-y-4">
       <div className="flex gap-1 overflow-x-auto pb-1">
         {STICKER_PACKS.map((item) => {
           const active = packId === item.id;
+          const needsPro = packRequiresPro(item.id);
           return (
             <button
               key={item.id}
@@ -159,23 +174,57 @@ function StickersPane({ onAdd }: { onAdd: (id: string) => void }) {
                 aria-hidden
               />
               <span className="label-condensed text-[9px]">{item.name}</span>
+              {needsPro && !pro ? (
+                <span className="micro-mono text-[8px] text-signal">PRO</span>
+              ) : null}
             </button>
           );
         })}
       </div>
       <p className="text-sm text-ash">{pack.tagline}</p>
+      {locked && !loading ? (
+        <div className="border border-signal/40 bg-signal-tint px-3 py-3 text-sm">
+          <p className="text-bone">Пак «{pack.name}» у Kadr Pro.</p>
+          <p className="mt-1 text-ash">
+            {authenticated
+              ? "Оформіть Pro, щоб додавати ці стікери на кадр."
+              : "Увійдіть і оформіть Pro, щоб додавати ці стікери."}
+          </p>
+          <Link
+            href={authenticated ? "/pro" : `/login?next=${encodeURIComponent("/pro")}`}
+            className="mt-3 inline-flex"
+          >
+            <Button variant="signal" className="!py-1.5 text-xs">
+              {authenticated ? "Відкрити Pro" : "Увійти → Pro"}
+            </Button>
+          </Link>
+        </div>
+      ) : null}
       <div className="grid grid-cols-3 border border-rule">
         {pack.stickers.map((sticker, i) => (
           <button
             key={sticker.id}
             type="button"
-            onClick={() => onAdd(sticker.id)}
-            title={sticker.name}
-            className={`aspect-square bg-slab p-2 transition-colors hover:bg-table ${
+            onClick={() => {
+              if (locked) {
+                track("paywall_shown", { packId: pack.id, stickerId: sticker.id, source: "sticker_click" });
+                return;
+              }
+              onAdd(sticker.id);
+            }}
+            title={locked ? `${sticker.name} · Pro` : sticker.name}
+            className={`relative aspect-square bg-slab p-2 transition-colors hover:bg-table ${
               i % 3 !== 2 ? "border-r border-rule" : ""
-            } ${i < pack.stickers.length - (pack.stickers.length % 3 || 3) ? "border-b border-rule" : ""}`}
+            } ${i < pack.stickers.length - (pack.stickers.length % 3 || 3) ? "border-b border-rule" : ""} ${
+              locked ? "opacity-55" : ""
+            }`}
           >
             <StickerMark id={sticker.id} className="h-full w-full" />
+            {locked ? (
+              <span className="absolute inset-x-1 bottom-1 text-center micro-mono text-[8px] text-signal">
+                Pro
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

@@ -3,6 +3,7 @@ import { CropMarksHost } from "@/components/ui/CropMarks";
 import { FrameNo } from "@/components/ui/FrameNo";
 import { Label } from "@/components/ui/Label";
 import { DraftsShelf } from "@/components/DraftsShelf";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { StoryPreview } from "@/components/StoryFrame";
 import { StickerMark } from "@/components/StickerMark";
@@ -141,6 +142,7 @@ export default function HomePage() {
           </Link>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }
